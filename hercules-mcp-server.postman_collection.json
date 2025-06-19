@@ -1,0 +1,165 @@
+{
+  "info": {
+    "_postman_id": "hercules-mcp-server-collection",
+    "name": "Hercules MCP Server API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Postman collection for all Hercules MCP Server API endpoints."
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "List Available Tools",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/tools",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tools"]
+        }
+      }
+    },
+    {
+      "name": "Create Test Case",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Test Case\",\n  \"gherkinContent\": \"Feature: Example\n  Scenario: Test\n    Given something\n    When something happens\n    Then expect something\",\n  \"testDataPath\": \"optional/path/to/data.json\",\n  \"llmModel\": \"gpt-4o\",\n  \"llmApiKey\": \"your-api-key\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/tools/create_test_case",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tools", "create_test_case"]
+        }
+      }
+    },
+    {
+      "name": "Run Test Case",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"testCaseId\": \"<testCaseId>\",\n  \"llmModel\": \"gpt-4o\",\n  \"llmApiKey\": \"your-api-key\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/tools/run_test_case",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tools", "run_test_case"]
+        }
+      }
+    },
+    {
+      "name": "List Test Cases",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/tools/list_test_cases",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tools", "list_test_cases"]
+        }
+      }
+    },
+    {
+      "name": "Get Test Case Details",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/tools/get_test_case/<testCaseId>",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tools", "get_test_case", "<testCaseId>"]
+        }
+      }
+    },
+    {
+      "name": "Get Execution Results",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/tools/get_execution_results/<testCaseId>",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tools", "get_execution_results", "<testCaseId>"]
+        }
+      }
+    },
+    {
+      "name": "List Resources",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/resources",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["resources"]
+        }
+      }
+    },
+    {
+      "name": "Read Resource",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/resources/read?uri=hercules://test-case/<testCaseId>",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["resources", "read"],
+          "query": [
+            { "key": "uri", "value": "hercules://test-case/<testCaseId>" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Serve Static Results Files",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/results/<testCaseId>/<filename>",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["results", "<testCaseId>", "<filename>"]
+        }
+      }
+    }
+  ]
+} 

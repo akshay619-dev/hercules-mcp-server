@@ -53,46 +53,68 @@ A Model Context Protocol (MCP) server and VS Code extension that provides seamle
 
 4. Start the server:
    ```bash
-   npm start
+   npm run start:http
    ```
 
 
-## 🔧 Configuration
+## 🧪 Testing and 📬 API Usage & Postman Collection
 
-### MCP Server Configuration
+A Postman collection is provided to help you explore and test all available API endpoints of the Hercules MCP Server.
 
-The MCP server can be configured by modifying the `HerculesClient` constructor in `hercules-mcp-server/src/hercules-client.ts`:
+### Import the Collection
 
-```typescript
-constructor(herculesPath: string = '../your_path/testzeus-hercules') {
-  this.herculesPath = herculesPath;
-  // ...
+1. Open Postman.
+2. Click **Import** and select `hercules-mcp-server.postman_collection.json` from the project root.
+3. Set the base URL to `http://localhost:3000` (or your configured port).
+
+### Available Endpoints
+
+- `GET    /health` — Health check
+- `GET    /tools` — List available tools
+- `POST   /tools/create_test_case` — Create a new test case
+- `POST   /tools/run_test_case` — Run a test case
+- `GET    /tools/list_test_cases` — List all test cases
+- `GET    /tools/get_test_case/:testCaseId` — Get details of a test case
+- `GET    /tools/get_execution_results/:testCaseId` — Get execution results
+- `GET    /resources` — List resources
+- `GET    /resources/read?uri=hercules://test-case/<testCaseId>` — Read resource content
+- `GET    /results/:testCaseId/:filename` — Download result files (e.g., reports)
+
+### Example: Create a Test Case
+
+```
+POST /tools/create_test_case
+Content-Type: application/json
+{
+  "name": "Sample Test Case",
+  "gherkinContent": "Feature: Example\n  Scenario: Test\n    Given something\n    When something happens\n    Then expect something",
+  "testDataPath": "optional/path/to/data.json",
+  "llmModel": "gpt-4o",
+  "llmApiKey": "your-api-key"
 }
 ```
 
+### Example: Run a Test Case
 
-## 🧪 Testing
-
-### Test the MCP Server
-
-1. Start the MCP server
-2. Use an MCP client to test the tools:
-
-```bash
-# List available tools
-curl -X POST http://localhost:3000/tools/list
-
-# Create a test case
-curl -X POST http://localhost:3000/tools/call \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "create_test_case",
-    "arguments": {
-      "name": "Test Login",
-      "gherkinContent": "Feature: Login\nScenario: Login\nGiven I am on login page"
-    }
-  }'
 ```
+POST /tools/run_test_case
+Content-Type: application/json
+{
+  "testCaseId": "<testCaseId>",
+  "llmModel": "gpt-4o",
+  "llmApiKey": "your-api-key"
+}
+```
+
+### Example: Get Test Case Details
+
+```
+GET /tools/get_test_case/<testCaseId>
+```
+
+For more, see the imported Postman collection in your workspace
+
+
 
 ## 🔍 Troubleshooting
 
