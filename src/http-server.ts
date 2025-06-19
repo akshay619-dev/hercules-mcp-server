@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { HerculesClient } from './hercules-client.js';
 import { CreateTestCaseRequest, RunTestCaseRequest } from './types.js';
+import path from 'path';
 
 export class HerculesHTTPServer {
   private app: express.Application;
@@ -128,7 +129,11 @@ export class HerculesHTTPServer {
 
         res.json({
           success: true,
-          result,
+          result: {
+            ...result,
+            junitXmlLink: result.junitXml ? result.junitXml : null,
+            htmlReportLink: result.htmlReport ? result.htmlReport : null
+          },
           message: `Test case execution completed with status: ${result.status}. Execution time: ${result.executionTime}ms`
         });
       } catch (error) {
@@ -200,7 +205,11 @@ export class HerculesHTTPServer {
 
         res.json({
           success: true,
-          result: executionResult
+          result: {
+            ...executionResult,
+            junitXmlLink: executionResult.junitXml ? executionResult.junitXml : null,
+            htmlReportLink: executionResult.htmlReport ? executionResult.htmlReport : null
+          }
         });
       } catch (error) {
         res.status(500).json({
@@ -278,6 +287,17 @@ export class HerculesHTTPServer {
           success: false
         });
       }
+    });
+
+    // Serve static results files
+    this.app.use('/results/:testCaseId', (req, res, next) => {
+      const { testCaseId } = req.params;
+      const { 0: slash, 1: filename } = req.path.match(/\/([^\/]+)$/) || [];
+      if (!testCaseId || !filename) return res.status(404).send('Not found');
+      const filePath = path.join(__dirname, '..', 'test-cases', testCaseId, 'output', filename);
+      res.sendFile(filePath, (err) => {
+        if (err) next();
+      });
     });
   }
 

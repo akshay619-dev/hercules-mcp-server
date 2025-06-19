@@ -243,12 +243,23 @@ export class HerculesClient {
       console.log('Hercules stderr:', data.toString());
     });
 
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       herculesProcess.on('close', async (code) => {
         const executionTime = Date.now() - startTime;
         console.log(`Hercules process exited with code: ${code}`);
         console.log(`Total execution time: ${executionTime}ms`);
         
+        // Parse stderr for result file paths
+        let parsedJunitXml = '';
+        let parsedHtmlReport = '';
+        const junitMatch = stderr.match(/Results published in junitxml file: (.+)/);
+        if (junitMatch) {
+          parsedJunitXml = junitMatch[1].trim();
+        }
+        const htmlMatch = stderr.match(/Results published in html file: (.+)/);
+        if (htmlMatch) {
+          parsedHtmlReport = htmlMatch[1].trim();
+        }
         try {
           // Collect results
           const proofsDir = path.join(outputPath, 'proofs');
@@ -257,8 +268,8 @@ export class HerculesClient {
           const logs = await this.collectFiles(outputPath, 'logs', '.log');
           const networkLogs = await this.collectFiles(proofsDir, 'network_logs', '.json');
           
-          const junitXml = path.join(outputPath, `${featureFileName.replace('.feature', '')}_result.xml`);
-          const htmlReport = path.join(outputPath, `${featureFileName.replace('.feature', '')}_result.html`);
+          const junitXml = parsedJunitXml ? this.normalizePath(parsedJunitXml) : path.join(outputPath, `${featureFileName.replace('.feature', '')}_result.xml`);
+          const htmlReport = parsedHtmlReport ? this.normalizePath(parsedHtmlReport) : path.join(outputPath, `${featureFileName.replace('.feature', '')}_result.html`);
 
           result.status = code === 0 ? 'passed' : 'failed';
           result.executionTime = executionTime;
@@ -266,15 +277,44 @@ export class HerculesClient {
           result.videos = videos;
           result.logs = logs;
           result.networkLogs = networkLogs;
-          result.junitXml = await this.fileExists(junitXml) ? junitXml : '';
-          result.htmlReport = await this.fileExists(htmlReport) ? htmlReport : '';
+          result.junitXml = junitXml;
+          result.htmlReport = htmlReport;
           result.error = code !== 0 ? stderr : undefined;
+
+          // Persist result info to output/results.json
+          const resultsJsonPath = path.join(outputPath, 'results.json');
+          await fs.writeFile(resultsJsonPath, JSON.stringify(result, null, 2));
 
           if (code !== 0) {
             console.log('Hercules execution failed. Falling back to mock implementation.');
             // If Hercules fails, fall back to mock
             await this.mockTestExecution(testCase, result, startTime);
           }
+
+          // If junitXml or htmlReport are outside the output directory, copy them in
+          const outputFilesToCopy: {src: string, dest: string}[] = [];
+          const outputDir = outputPath;
+          if (junitXml && !junitXml.startsWith(outputDir)) {
+            const dest = path.join(outputDir, path.basename(junitXml));
+            outputFilesToCopy.push({src: junitXml, dest});
+            result.junitXml = dest;
+          }
+          if (htmlReport && !htmlReport.startsWith(outputDir)) {
+            const dest = path.join(outputDir, path.basename(htmlReport));
+            outputFilesToCopy.push({src: htmlReport, dest});
+            result.htmlReport = dest;
+          }
+          for (const {src, dest} of outputFilesToCopy) {
+            try {
+              await fs.copyFile(src, dest);
+            } catch (e) {
+              // Ignore copy errors
+            }
+          }
+          // Provide public URLs for API
+          const testCaseId = testCase.id;
+          result.junitXmlUrl = result.junitXml ? `/results/${testCaseId}/${path.basename(result.junitXml)}` : undefined  ;
+          result.htmlReportUrl = result.htmlReport ? `/results/${testCaseId}/${path.basename(result.htmlReport)}` : undefined;
 
           resolve();
         } catch (error) {
@@ -335,6 +375,18 @@ export class HerculesClient {
         return null;
       }
 
+      // Try to read output/results.json for the latest result info
+      const resultsJsonPath = path.join(outputPath, 'results.json');
+      let storedResult: Partial<HerculesTestResult> = {};
+      if (await this.fileExists(resultsJsonPath)) {
+        try {
+          const storedContent = await fs.readFile(resultsJsonPath, 'utf-8');
+          storedResult = JSON.parse(storedContent);
+        } catch (e) {
+          storedResult = {};
+        }
+      }
+
       const testCaseContent = await fs.readFile(metadataPath, 'utf-8');
       const testCase: HerculesTestCase = JSON.parse(testCaseContent);
 
@@ -346,8 +398,21 @@ export class HerculesClient {
       const networkLogs = await this.collectFiles(proofsDir, 'network_logs', '.json');
       
       const featureFileName = `${testCase.name.replace(/\s+/g, '_')}.feature`;
-      const junitXml = path.join(outputPath, `${featureFileName.replace('.feature', '')}_result.xml`);
-      const htmlReport = path.join(outputPath, `${featureFileName.replace('.feature', '')}_result.html`);
+      // Use stored paths if available, otherwise fallback
+      let junitXml = storedResult.junitXml || path.join(outputPath, `${featureFileName.replace('.feature', '')}_result.xml`);
+      let htmlReport = storedResult.htmlReport || path.join(outputPath, `${featureFileName.replace('.feature', '')}_result.html`);
+      const normalizePath = (p: string) => {
+        if (!p) return '';
+        if (p.startsWith('./')) {
+          return path.resolve(this.herculesPath, p.slice(2));
+        }
+        if (!path.isAbsolute(p)) {
+          return path.resolve(this.herculesPath, p);
+        }
+        return p;
+      };
+      junitXml = storedResult.junitXml ? normalizePath(storedResult.junitXml) : junitXml;
+      htmlReport = storedResult.htmlReport ? normalizePath(storedResult.htmlReport) : htmlReport;
 
       // Determine if test was actually executed by checking for output files
       const hasOutputFiles = screenshots.length > 0 || videos.length > 0 || logs.length > 0 || 
@@ -358,17 +423,25 @@ export class HerculesClient {
         return null;
       }
 
+      // Provide public URLs for API
+      const testCaseId = testCase.id;
+      const junitXmlUrl = junitXml ? `/results/${testCaseId}/${path.basename(junitXml)}` : undefined;
+      const htmlReportUrl = htmlReport ? `/results/${testCaseId}/${path.basename(htmlReport)}` : undefined;
+
       const result: HerculesTestResult = {
         id: `exec-${testCaseId}`,
         status: testCase.status === 'completed' ? 'passed' : 'pending',
-        executionTime: 0, // We don't store this in metadata, so default to 0
+        executionTime: storedResult.executionTime || 0, // Use stored if available
         screenshots,
         videos,
         logs,
         networkLogs,
-        junitXml: await this.fileExists(junitXml) ? junitXml : '',
-        htmlReport: await this.fileExists(htmlReport) ? htmlReport : '',
-        timestamp: testCase.updatedAt
+        junitXml: junitXml,
+        htmlReport: htmlReport,
+        error: storedResult.error,
+        timestamp: testCase.updatedAt,
+        junitXmlUrl,
+        htmlReportUrl
       };
 
       return result;
@@ -424,5 +497,16 @@ export class HerculesClient {
     } catch {
       return [];
     }
+  }
+
+  private normalizePath(p: string): string {
+    if (!p) return '';
+    if (p.startsWith('./')) {
+      return path.resolve(this.herculesPath, p.slice(2));
+    }
+    if (!path.isAbsolute(p)) {
+      return path.resolve(this.herculesPath, p);
+    }
+    return p;
   }
 } 

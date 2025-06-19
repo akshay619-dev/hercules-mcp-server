@@ -11,6 +11,8 @@ export interface HerculesTestResult {
   htmlReport: string;
   error?: string;
   timestamp: string;
+  junitXmlUrl?: string;
+  htmlReportUrl?: string;
 }
 
 export interface HerculesTestCase {
