@@ -294,12 +294,12 @@ export class HerculesClient {
 
       // Add timeout to prevent hanging
       setTimeout(() => {
-        console.log('Hercules execution timed out after 60 seconds');
+        console.log('Hercules execution timed out after 5 minutes');
         herculesProcess.kill('SIGTERM');
         result.status = 'failed';
         result.error = 'Execution timed out';
         reject(result);
-      }, 60000);
+      }, 300000);
     });
   }
 
