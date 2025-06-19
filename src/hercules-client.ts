@@ -9,7 +9,7 @@ export class HerculesClient {
   private testCasesDir: string;
   private resultsDir: string;
 
-  constructor(herculesPath: string = '/Users/akshay/Desktop/workspace/prototype/testzeus-hercules') {
+  constructor(herculesPath = process.env.HERCULES_PATH || '') {
     this.herculesPath = herculesPath;
     // Use __dirname to get the directory where the compiled JS file is located
     const baseDir = path.dirname(new URL(import.meta.url).pathname);

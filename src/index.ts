@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { HerculesMCPServer } from './mcp-server.js';
 
 async function main() {

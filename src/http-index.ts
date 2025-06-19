@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { HerculesHTTPServer } from './http-server.js';
 
 async function main() {
